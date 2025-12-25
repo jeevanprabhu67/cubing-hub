@@ -104,7 +104,7 @@
     let coins=getCoins(), owned=getOwned(), deck=[], idx=0, score=0, usedReviveMC=false, usedReviveInput=false;
 
     // --- Data ---
-    const QUESTIONS = [
+   const QUESTIONS = [
       {q:"What is the 3×3 WR?", options:["3.47s","3.13s","3.21s","2.96s"], answer:1},
       {q:"What does DNF mean?", options:["Did Not Finish","Does Not Fit","Deck Not Found","Deemed Not Fair"], answer:0},
       {q:"Penalty if misaligned >45° at finish?", options:["+2","DNF","No penalty","Re-scramble"], answer:1},
@@ -112,8 +112,21 @@
       {q:"God’s Number for 3×3?", options:["17","18","20","22"], answer:2},
       {q:"CFOP stands for?", options:["Cross,F2L,OLL,PLL","Corner First","Center First","Cross,F2L,Orientation,Permutation"], answer:0},
       {q:"Which step orients the last layer?", options:["F2L","OLL","PLL","Cross"], answer:1},
-      {q:"WCA stands for?", options:["World Cubing Association","World Cube Association","World Contest of Algorithms","World Championship Athletics"], answer:1}
+      {q:"WCA stands for?", options:["World Cubing Association","World Cube Association","World Contest of Algorithms","World Championship Athletics"], answer:1},
+      {q:"Approx. number of 3×3 states?", options:["43 million","43 billion","43 quintillion","4.3 million"], answer:2},
+      {q:"Scramble notation uses?", options:["Face turns with ',2","Edge rotations","Vertex swaps","Block moves"], answer:0},
+      {q:"Timer start +2 can occur when?", options:["Hands not on sensors","Starting before green light","Touch cube during inspection","Not resetting"], answer:1},
+      {q:"PLL primarily?", options:["Orients LL","Permutes LL","Solves F2L","Creates cross"], answer:1},
+      {q:"DNF due to timer stop can be:", options:["One hand only","Not stopping in 0.5s","Failing both sensors","Stopping late"], answer:2},
+      {q:"Which event is one-handed?", options:["3×3 OH","Pyraminx","Skewb","Clock"], answer:0},
+      {q:"OLL skip means:", options:["No algs","OLL solved after F2L","PLL unnecessary","Cross solved"], answer:1},
+      {q:"Best early CFOP improvement:", options:["Full OLL","Full PLL","Full F2L","No algs"], answer:1},
+      {q:"+2 at finish for alignment:", options:["Any misalignment","≤45° misalignment","90° misaligned","Judge only"], answer:1},
+      {q:"Inspection time allowed?", options:["10s","12s","15s","20s"], answer:2},
+      {q:"TPS stands for?", options:["Turns Per Second","Twists Per Solve","Time Per Step","Total Permutation Set"], answer:0},
+      {q:"Pyraminx notation includes?", options:["R U L F D B","Face + tip moves","Slice moves","Rotations only"], answer:1}
     ];
+
 
     const REVIVE_PLL = [
       {q:"Which PLL swaps opposite edges?", options:["H perm","Z perm","Ua perm","Ub perm"], answer:0},
@@ -165,3 +178,4 @@
 
     function renderScramble(){
       const faces=["R","L","U","D
+
