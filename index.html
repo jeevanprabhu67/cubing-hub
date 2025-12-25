@@ -1,126 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Cubing Hub</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {margin:0;font-family:Arial,sans-serif;background:#fff;color:#000;min-height:100vh;}
-        body::before{content:"";position:fixed;inset:0;background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Rubik%27s_cube_scrambled.svg') center/420px no-repeat;opacity:0.08;pointer-events:none;z-index:-1;}
-        .container{max-width:960px;margin:36px auto;padding:0 16px;}
-        .card{background:#000;color:#fff;border-radius:14px;padding:22px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,0.35);border:1px solid #1f1f1f;}
-        h1,h2,h3{margin:0 0 16px 0;}
-        .row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;}
-        .btn{display:inline-block;margin:8px;padding:12px 18px;background:#0078d7;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;min-width:220px;}
-        .btn:hover{background:#005a9e;}
-        .stats{font-weight:700;color:#5fe3a1;margin:10px 0 16px;}
-        .q{font-size:1.1rem;margin:10px 0 16px;}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;}
-        @media(max-width:640px){.grid{grid-template-columns:1fr;}}
-        .opt{background:#1b1b1b;border:1px solid #2a2a2a;border-radius:10px;padding:10px;cursor:pointer;color:#fff; width: 100%; text-align: left;}
-        table{width:100%;border-collapse:collapse;margin-top:14px;}
-        th,td{border:1px solid #2a2a2a;padding:10px;text-align:left;vertical-align:top;}
-        th{background:#0f0f0f;}
-        td{background:#111;}
-        input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#1b1b1b;color:#fff;font-size:1rem;margin:8px 0 12px; box-sizing: border-box;}
-    </style>
+  <meta charset="UTF-8" />
+  <title>Cubing Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Page background + subtle cube watermark */
+    html, body { margin:0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:#ffffff;
+      color:#000000;
+      min-height:100vh;
+    }
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Rubik%27s_cube_scrambled.svg') center/420px no-repeat;
+      opacity:0.08;
+      pointer-events:none;
+      z-index:-1;
+    }
+
+    /* Centered black box card */
+    .container { max-width: 980px; margin: 36px auto; padding: 0 16px; }
+    .card {
+      background:#000000;
+      color:#ffffff;
+      border-radius:14px;
+      box-shadow:0 16px 40px rgba(0,0,0,0.35);
+      border:1px solid #1f1f1f;
+      padding:22px;
+      text-align:center;
+    }
+
+    /* UI */
+    h1, h2, h3 { margin: 0 0 16px 0; }
+    .row { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
+    .btn {
+      display:inline-block;
+      margin:8px;
+      padding:12px 18px;
+      background:#0078d7;
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:700;
+      min-width:220px;
+    }
+    .btn:hover { background:#005a9e; }
+    .stats { font-weight:700; color:#5fe3a1; margin:10px 0 16px; }
+    .q { font-size:1.1rem; margin:10px 0 16px; }
+
+    /* Options / grid */
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; }
+    @media (max-width:640px){ .grid { grid-template-columns:1fr; } }
+    .opt {
+      background:#1b1b1b;
+      border:1px solid #2a2a2a;
+      border-radius:10px;
+      padding:10px;
+      cursor:pointer;
+      color:#fff;
+    }
+
+    /* Tables */
+    table { width:100%; border-collapse:collapse; margin-top:14px; }
+    th, td { border:1px solid #2a2a2a; padding:10px; text-align:left; vertical-align:top; }
+    th { background:#0f0f0f; }
+    td { background:#111; }
+    .thumb { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; background:#222; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+    img.alg { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; object-fit:contain; background:#222; }
+
+    /* Inputs */
+    input[type="text"]{
+      width:100%; padding:10px;
+      border-radius:8px; border:1px solid #2a2a2a;
+      background:#1b1b1b; color:#fff; font-size:1rem;
+      margin:8px 0 12px;
+      box-sizing: border-box;
+    }
+
+    /* Notes + dividers */
+    .note { color:#cfcfcf; font-size:0.95rem; margin-bottom:10px; }
+    .divider { height:1px; background:#2a2a2a; margin:16px 0; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card" id="app"></div>
-    </div>
+  <div class="container"><div class="card" id="app"></div></div>
 
-<script>
+  <script>
+    // --- Persistence ---
     const COIN_KEY='cubingHubCoins', OWNED_KEY='cubingHubOwned';
-    const getCoins=()=>parseInt(localStorage.getItem(COIN_KEY)||'0',10);
-    const setCoins=v=>{ localStorage.setItem(COIN_KEY,String(v)); coins = v; };
-    const getOwned=()=>{try{return new Set(JSON.parse(localStorage.getItem(OWNED_KEY)||'[]'));}catch{return new Set();}};
-    const setOwned=set=>localStorage.setItem(OWNED_KEY,JSON.stringify([...set]));
-    
+    const getCoins = ()=> parseInt(localStorage.getItem(COIN_KEY)||'0',10);
+    const setCoins = v => localStorage.setItem(COIN_KEY,String(v));
+    const getOwned = ()=> { try{ return new Set(JSON.parse(localStorage.getItem(OWNED_KEY)||'[]')); } catch{ return new Set(); } };
+    const setOwned = set => localStorage.setItem(OWNED_KEY, JSON.stringify([...set]));
+
+    // --- State ---
     const app=document.getElementById('app');
-    let coins=getCoins(), owned=getOwned();
+    let coins=getCoins(), owned=getOwned(), deck=[], idx=0, score=0, usedReviveMC=false, usedReviveInput=false;
 
-    const SHOP_ITEMS=[{id:"F2L2LOOK",name:"2-Look F2L",cost:10},{id:"OLL_FULL",name:"OLL (Full)",cost:20},{id:"ZBLL_FULL",name:"ZBLL (Full)",cost:50}];
-
-    const QUESTIONS=[ 
-        {q:"What is the 3×3 WR?",options:["3.47s","3.13s","3.21s","2.96s"],answer:1},
-        {q:"God’s Number for 3×3?",options:["17","18","20","22"],answer:2},
-        {q:"CFOP stands for?",options:["Cross,F2L,OLL,PLL","Corner First","Center First","Cross,F2L,Orientation,Permutation"],answer:0}
+    // --- Data ---
+    const QUESTIONS = [
+      {q:"What is the 3×3 WR?", options:["3.47s","3.13s","3.21s","2.96s"], answer:1},
+      {q:"What does DNF mean?", options:["Did Not Finish","Does Not Fit","Deck Not Found","Deemed Not Fair"], answer:0},
+      {q:"Penalty if misaligned >45° at finish?", options:["+2","DNF","No penalty","Re-scramble"], answer:1},
+      {q:"Inspection 15–17s penalty?", options:["No penalty","+2","DNF","Disqualification"], answer:1},
+      {q:"God’s Number for 3×3?", options:["17","18","20","22"], answer:2},
+      {q:"CFOP stands for?", options:["Cross,F2L,OLL,PLL","Corner First","Center First","Cross,F2L,Orientation,Permutation"], answer:0},
+      {q:"Which step orients the last layer?", options:["F2L","OLL","PLL","Cross"], answer:1},
+      {q:"WCA stands for?", options:["World Cubing Association","World Cube Association","World Contest of Algorithms","World Championship Athletics"], answer:1}
     ];
 
-    // --- Core Navigation ---
+    const REVIVE_PLL = [
+      {q:"Which PLL swaps opposite edges?", options:["H perm","Z perm","Ua perm","Ub perm"], answer:0},
+      {q:"Which PLL swaps adjacent edges?", options:["Z perm","H perm","Ua perm","Ub perm"], answer:1}
+    ];
+
+    const PLL = {
+      Aa: "x R' U R' D2 R U' R' D2 R2",
+      Ab: "x R U' R D2 R' U R D2 R2",
+      H:  "M2 U M2 U2 M2 U M2",
+      T:  "R U R' U' R' F R2 U' R' U' R U R' F'",
+      Ua: "R U' R U R U R U' R' U' R2",
+      Ub: "R2 U R U R' U' R' U' R' U R'"
+    };
+    const TPERM = PLL.T;
+
+    const F2L2LOOK_ALGS = [{name: "Basic Insert", alg: "U R U' R'"}, {name: "Alt Insert", alg: "y' U' R' U R"}];
+    const OLL = Array.from({length:57}, (_,i) => ({ name: `OLL ${i+1}`, alg: "See AlgDB", img: `https://algdb.net/img/oll/oll${i+1}.png` }));
+    const ZBLL = [{name:"ZBLL U1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/u1.png"}];
+    const SHOP_ITEMS = [
+      {id:"F2L2LOOK", name:"2-Look F2L", cost:10},
+      {id:"OLL_FULL", name:"OLL (Full)", cost:20},
+      {id:"ZBLL_FULL", name:"ZBLL (Full)", cost:500}
+    ];
+
+    const STORY = [
+      { text: "You wake up in a cubing arena. A giant scrambled cube floats before you.", choices: [{label:"Try to solve it", next:1, reward:2}, {label:"Walk away", next:2, reward:0}] },
+      { text: "You grab the cube and start turning. The crowd cheers!", choices: [{label:"Keep solving", next:3, reward:5}, {label:"Drop the cube", next:2, reward:0}] },
+      { text: "You leave the arena. The adventure ends.", choices: [] },
+      { text: "You solve the cube! Confetti rains down.", choices: [] }
+    ];
+    let storyIndex = 0;
+
+    // --- Views ---
     function renderMenu(){
-        app.innerHTML=`
-            <h1>Cubing Hub</h1>
-            <p class="stats">Coins: ${coins}</p>
-            <div class="row">
-                <button class="btn" onclick="renderScramble()">Scramble Generator</button>
-                <button class="btn" onclick="startQuiz()">Quiz</button>
-                <button class="btn" onclick="renderShop()">Shop</button>
-                <button class="btn" onclick="renderGuide()">How to Solve</button>
-            </div>`;
+      app.innerHTML = `
+        <h1>Cubing Hub</h1>
+        <div class="row">
+          <button class="btn" onclick="renderScramble()">Scramble Generator</button>
+          <button class="btn" onclick="startQuiz()">Quiz (20 Qs + revive)</button>
+          <button class="btn" onclick="renderShop()">Shop</button>
+          <button class="btn" onclick="renderSpreadsheet()">Algorithm Spreadsheet</button>
+          <button class="btn" onclick="renderGuide()">How to Solve</button>
+          <button class="btn" onclick="renderStory()">Game</button>
+        </div>
+        <div class="stats">Coins: ${coins}</div>
+      `;
     }
 
     function renderScramble(){
-        const moves = ["U", "D", "L", "R", "F", "B"];
-        const mods = ["", "'", "2"];
-        let scramble = [];
-        for(let i=0; i<20; i++){
-            let m = moves[Math.floor(Math.random()*moves.length)] + mods[Math.floor(Math.random()*mods.length)];
-            scramble.push(m);
-        }
-        app.innerHTML = `<h2>Scramble</h2><p class="q">${scramble.join(" ")}</p><button class="btn" onclick="renderMenu()">Back</button>`;
-    }
-
-    function startQuiz(){
-        let score = 0;
-        let qIdx = 0;
-        const showQuestion = () => {
-            if(qIdx >= QUESTIONS.length){
-                setCoins(coins + score);
-                app.innerHTML = `<h2>Finished!</h2><p>You earned ${score} coins.</p><button class="btn" onclick="renderMenu()">Back</button>`;
-                return;
-            }
-            let q = QUESTIONS[qIdx];
-            app.innerHTML = `<h3>${q.q}</h3><div class="grid">` + 
-                q.options.map((o, i) => `<button class="opt" onclick="check(${i})">${o}</button>`).join('') + `</div>`;
-        };
-        window.check = (i) => {
-            if(i === QUESTIONS[qIdx].answer) score++;
-            qIdx++;
-            showQuestion();
-        };
-        showQuestion();
-    }
-
-    function renderShop(){
-        let html = `<h2>Shop</h2><p class="stats">Coins: ${coins}</p><table>`;
-        SHOP_ITEMS.forEach(item => {
-            const isOwned = owned.has(item.id);
-            html += `<tr><td>${item.name}</td><td>${item.cost} Coins</td>
-                <td><button onclick="buy('${item.id}', ${item.cost})" ${isOwned ? 'disabled' : ''}>${isOwned ? 'Owned' : 'Buy'}</button></td></tr>`;
-        });
-        app.innerHTML = html + `</table><br><button class="btn" onclick="renderMenu()">Back</button>`;
-    }
-
-    window.buy = (id, cost) => {
-        if(coins >= cost && !owned.has(id)){
-            setCoins(coins - cost);
-            owned.add(id);
-            setOwned(owned);
-            renderShop();
-        } else {
-            alert("Not enough coins or already owned!");
-        }
-    };
-
-    function renderGuide(){
-        app.innerHTML = `<h2>How to Solve</h2><p>1. Cross<br>2. F2L<br>3. OLL<br>4. PLL</p><button class="btn" onclick="renderMenu()">Back</button>`;
-    }
-
-    // Initialize the app
-    renderMenu();
-
-</script>
-</body>
-</html>
+      const faces=["R","L","U","D
