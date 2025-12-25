@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cubing Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#fff; color:#000; min-height:100vh; }
+    body::before { content:""; position:fixed; inset:0; background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Rubik%27s_cube_scrambled.svg') center/420px no-repeat; opacity:0.08; pointer-events:none; z-index:-1; }
+    .container { max-width: 980px; margin: 36px auto; padding: 0 16px; }
+    .card { background:#000; color:#fff; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,0.35); border:1px solid #1f1f1f; padding:22px; text-align:center; }
+    h1, h2, h3 { margin: 0 0 16px 0; }
+    .row { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
+    .btn { display:inline-block; margin:8px; padding:12px 18px; background:#0078d7; color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:700; min-width:220px; }
+    .btn:hover { background:#005a9e; }
+    .stats { font-weight:700; color:#5fe3a1; margin:10px 0 16px; }
+    .q { font-size:1.1rem; margin:10px 0 16px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; }
+    @media (max-width:640px){ .grid { grid-template-columns:1fr; } }
+    .opt { background:#1b1b1b; border:1px solid #2a2a2a; border-radius:10px; padding:10px; cursor:pointer; color:#fff; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; }
+    th, td { border:1px solid #2a2a2a; padding:10px; text-align:left; vertical-align:top; }
+    th { background:#0f0f0f; }
+    td { background:#111; }
+    .thumb { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; background:#222; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
+    img.alg { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; object-fit:contain; background:#222; }
+    input[type="text"]{ width:100%; padding:10px; border-radius:8px; border:1px solid #2a2a2a; background:#1b1b1b; color:#fff; font-size:1rem; margin:8px 0 12px; }
+    .note { color:#cfcfcf; font-size:0.95rem; margin-bottom:10px; }
+    .divider { height:1px; background:#2a2a2a; margin:16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container"><div class="card" id="app"></div></div>
+
+  <script>
+    // Persistence
+    const COIN_KEY='cubingHubCoins', OWNED_KEY='cubingHubOwned';
+    const getCoins = ()=> parseInt(localStorage.getItem(COIN_KEY)||'0',10);
+    const setCoins = v => localStorage.setItem(COIN_KEY,String(v));
+    const getOwned = ()=> { try{ return new Set(JSON.parse(localStorage.getItem(OWNED_KEY)||'[]')); } catch{ return new Set(); } };
+    const setOwned = set => localStorage.setItem(OWNED_KEY, JSON.stringify([...set]));
+
+    // App state
+    const app=document.getElementById('app');
+    let coins=getCoins(), owned=getOwned(), deck=[], idx=0, score=0, usedReviveMC=false, usedReviveInput=false;
+
+    // PLL reference (T-perm used for revive)
+    const PLL = { T: "R U R' U' R' F R2 U' R' U' R U R' F'" };
+    const TPERM = PLL.T;
+
+    // Shop items
+    const SHOP_ITEMS = [
+      {id:"F2L2LOOK", name:"2-Look F2L", cost:10},
+      {id:"OLL_FULL", name:"OLL (Full)", cost:20},
+      {id:"ZBLL_FULL", name:"ZBLL (Sample)", cost:50}
+    ];
+
+    // Quiz questions (20)
+    const QUESTIONS = [
+      {q:"What is the 3×3 WR?", options:["3.47s","3.13s","3.21s","2.96s"], answer:1},
+      {q:"What does DNF mean?", options:["Did Not Finish","Does Not Fit","Deck Not Found","Deemed Not Fair"], answer:0},
+      {q:"Penalty if misaligned >45° at finish?", options:["+2","DNF","No penalty","Re-scramble"], answer:1},
+      {q:"Inspection 15–17s penalty?", options:["No penalty","+2","DNF","Disqualification"], answer:1},
+      {q:"God’s Number for 3×3?", options:["17","18","20","22"], answer:2},
+      {q:"CFOP stands for?", options:["Cross,F2L,OLL,PLL","Corner First","Center First","Cross,F2L,Orientation,Permutation"], answer:0},
+      {q:"Which step orients the last layer?", options:["F2L","OLL","PLL","Cross"], answer:1},
+      {q:"WCA stands for?", options:["World Cubing Association","World Cube Association","World Contest of Algorithms","World Championship Athletics"], answer:1},
+      {q:"Approx. number of 3×3 states?", options:["43 million","43 billion","43 quintillion","4.3 million"], answer:2},
+      {q:"Scramble notation uses?", options:["Face turns with ',2","Edge rotations","Vertex swaps","Block moves"], answer:0},
+      {q:"Timer start +2 can occur when?", options:["Hands not on sensors","Starting before green light","Touch cube during inspection","Not resetting"], answer:1},
+      {q:"PLL primarily?", options:["Orients LL","Permutes LL","Solves F2L","Creates cross"], answer:1},
+      {q:"DNF due to timer stop can be:", options:["One hand only","Not stopping in 0.5s","Failing both sensors","Stopping late"], answer:2},
+      {q:"Which event is one-handed?", options:["3×3 OH","Pyraminx","Skewb","Clock"], answer:0},
+      {q:"OLL skip means:", options:["No algs","OLL solved after F2L","PLL unnecessary","Cross solved"], answer:1},
+      {q:"Best early CFOP improvement:", options:["Full OLL","Full PLL","Full F2L","No algs"], answer:1},
+      {q:"+2 at finish for alignment:", options:["Any misalignment","≤45° misalignment","90° misaligned","Judge only"], answer:1},
+      {q:"Inspection time allowed?", options:["10s","12s","15s","20s"], answer:2},
+      {q:"TPS stands for?", options:["Turns Per Second","Twists Per Solve","Time Per Step","Total Permutation Set"], answer:0},
+      {q:"Pyraminx notation includes?", options:["R U L F D B","Face + tip moves","Slice moves","Rotations only"], answer:1}
+    ];
+
+    // Revive MCQ pool
+    const REVIVE_PLL = [
+      {q:"Which PLL swaps opposite edges?", options:["H perm","Z perm","Ua perm","Ub perm"], answer:0},
+      {q:"Which PLL swaps adjacent edges?", options:["Z perm","H perm","Ua perm","Ub perm"], answer:1},
+      {q:"Which PLL cycles three edges clockwise?", options:["Ua perm","Ub perm","T perm","Y perm"], answer:0},
+      {q:"Which PLL cycles three edges counterclockwise?", options:["Ua perm","Ub perm","T perm","Y perm"], answer:1}
+    ];
+
+    // 2-Look F2L unlock data
+    const F2L2LOOK_ALGS = [
+      {name: "2-Look F2L (basic pair insert)", alg: "U R U' R'"},
+      {name: "2-Look F2L (alt insert)", alg: "y' U' R' U R"}
+    ];
+
+    // Full OLL (57 images from algdb.net)
+    const OLL = Array.from({length:57}, (_,i) => ({
+      name: `OLL ${i+1}`,
+      alg: "(See algdb for preferred alg)", // optional to customize later
+      img: `https://algdb.net/img/oll/oll${i+1}.png`
+    }));
+
+    // Sample ZBLL (expandable)
+    const ZBLL = [
+      {name:"ZBLL U1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/u1.png"},
+      {name:"ZBLL U2", alg:"(See algdb)", img:"https://algdb.net/img/zbll/u2.png"},
+      {name:"ZBLL H1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/h1.png"},
+      {name:"ZBLL Pi1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/pi1.png"},
+      {name:"ZBLL T1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/t1.png"}
+    ];
+
+    // Story Game
+    const STORY = [
+      {
+        text: "You wake up in a cubing arena. A giant scrambled cube floats before you.",
+        choices: [
+          {label:"Try to solve it", next:1, reward:2},
+          {label:"Walk away", next:2, reward:0}
+        ]
+      },
+      {
+        text: "You grab the cube and start turning. The crowd cheers!",
+        choices: [
+          {label:"Keep solving", next:3, reward:5},
+          {label:"Drop the cube", next:2, reward:0}
+        ]
+      },
+      { text: "You leave the arena. The adventure ends.", choices: [] },
+      { text: "You solve the cube! Confetti rains down. You are crowned champion.", choices: [] }
+    ];
+    let storyIndex = 0;
+
+    // Entry
+    renderMenu();
+
+    // Views
+    function renderMenu(){
+      app.innerHTML = `
+        <h1>Cubing Hub</h1>
+        <div class="row">
+          <button class="btn" onclick="renderScramble()">Scramble Generator</button>
+          <button class="btn" onclick="startQuiz()">Quiz (20 Qs + revive)</button>
+          <button class="btn" onclick="renderShop()">Shop</button>
+          <button class="btn" onclick="renderSpreadsheet()">Algorithm Spreadsheet</button>
+          <button class="btn" onclick="renderGuide()">How to Solve</button>
+          <button class="btn" onclick="renderStory()">Game</button>
+        </div>
+        <div class="stats">Coins: ${coins}</div>
+      `;
+    }
+
+    // Scramble
+    function renderScramble(){
+      const s = generateScramble(20);
+      app.innerHTML = `
+        <h2>Scramble Generator</h2>
+        <div class="q">Your scramble:</div>
+        <div class="stats">${s}</div>
+        <div class="row">
+          <button class="btn" onclick="renderScramble()">Regenerate</button>
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>
+      `;
+    }
+    function generateScramble(len=20){
+      const faces=["R","L","U","D","F","B"], mods=["","'","2"];
+      const axis = f => (f==="R"||f==="L")?"x" : (f==="U"||f==="D")?"y" : "z";
+      let seq=[], last=null;
+      for(let i=0;i<len;i++){
+        let f;
+        do { f = faces[Math.floor(Math.random()*faces.length)]; }
+        while(last && axis(f) === axis(last));
+        last = f;
+        seq.push(f + mods[Math.floor(Math.random()*mods.length)]);
+      }
+      return seq.join(" ");
+    }
+
+    // Quiz
+    function startQuiz(){
+      deck = QUESTIONS.slice();
+      idx = 0; score = 0; usedReviveMC = false; usedReviveInput = false;
+      renderQuestion();
+    }
+    function renderQuestion(){
+      if(idx >= deck.length){ return renderSummary(); }
+      const q = deck[idx];
+      app.innerHTML = `
+        <h2>Quiz</h2>
+        <div class="stats">Q ${idx+1}/${deck.length} • Score ${score} • Coins ${coins}</div>
+        <div class="q">${q.q}</div>
+        <div class="grid">
+          ${q.options.map((o,i)=>`<button class="opt" onclick="choose(${i})">${o}</button>`).join("")}
+        </div>
+        <div class="row">
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>
+      `;
+    }
+    function choose(i){
+      const q = deck[idx];
+      if(i === q.answer){
+        score++; coins++; setCoins(coins);
+        idx++; renderQuestion();
+      } else {
+        if(!usedReviveMC){ usedReviveMC = true; reviveMC(); }
+        else if(!usedReviveInput){ usedReviveInput = true; reviveInput(); }
+        else { alert("Out of revives! Returning to main."); renderMenu(); }
+      }
+    }
+    function reviveMC(){
+      const r = REVIVE_PLL[Math.floor(Math.random()*REVIVE_PLL.length)];
+      app.innerHTML = `
+        <h2>Revive Challenge — PLL</h2>
+        <div class="q">${r.q}</div>
+        <div class="grid">
+          ${r.options.map((o,i)=>`<button class="opt" onclick="reviveMCAnswer(${i},${r.answer})">${o}</button>`).join("")}
+        </div>
+        <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
+      `;
+    }
+    function reviveMCAnswer(choice, correct){
+      if(choice === correct){ idx++; renderQuestion(); }
+      else { reviveInput(); }
+    }
+    function reviveInput(){
+      app.innerHTML = `
+        <h2>Final Revive — Type the T-perm Algorithm</h2>
+        <div class="note">Spacing differences are OK.</div>
+        <div class="q"><b>Reference:</b> ${TPERM}</div>
+        <input type="text" id="algInput" placeholder="Type the T-perm algorithm here" />
+        <div class="row">
+          <button class="btn" onclick="checkTperm()">Submit</button>
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>
+      `;
+    }
+    function checkTperm(){
+      const val = (document.getElementById('algInput').value || '').trim().replace(/\s+/g,' ');
+      const ref = TPERM.trim().replace(/\s+/g,' ');
+      if(val.toUpperCase() === ref.toUpperCase()){
+        alert("Revived!");
+        idx++; renderQuestion();
+      } else {
+        alert("Incorrect T-perm. Returning to main.");
+        renderMenu();
+      }
+    }
+    function renderSummary(){
+      const pct = Math.round((score / deck.length) * 100);
+      app.innerHTML = `
+        <h2>Quiz Complete</h2>
+        <div class="q">Score: ${score}/${deck.length} (${pct}%)</div>
+        <div class="stats">Coins: ${coins}</div>
+        <div class="row">
+          <button class="btn" onclick="startQuiz()">Play Again</button>
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>
+      `;
+    }
+
+    // Shop
+    function renderShop(){
+      app.innerHTML = `
+        <h2>Shop</h2>
+        <div class="stats">Your Coins: ${coins}</div>
+        <table>
+          <tr><th>Item</th><th>Cost</th><th>Status</th><th>Action</th></tr>
+          ${SHOP_ITEMS.map(i=>{
+            const has = owned.has(i.id);
+            return `<tr>
+              <td>${i.name}</td>
+              <td>${i.cost}</td>
+              <td>${has ? "Owned" : "Not owned"}</td>
+              <td>${has ? "<span>Purchased</span>" : `<button class="btn" onclick="buy('${i.id}',${i.cost})">Buy</button>`}</td>
+            </tr>`;
+          }).join("")}
+        </table>
+        <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
+      `;
+    }
+    function buy(id, cost){
+      if(owned.has(id)) return alert("Already purchased.");
+      if(coins < cost) return alert("Not enough coins!");
+      coins -= cost; setCoins(coins);
+      owned.add(id); setOwned(owned);
+      alert("Purchased!");
+      renderShop();
+    }
+
+    // Spreadsheet
+    function renderSpreadsheet(){
+      const unlocked = [
+        owned.has("F2L2LOOK") ? "2-Look F2L" : null,
+        owned.has("OLL_FULL") ? "OLL (Full)" : null,
+        owned.has("ZBLL_FULL") ? "ZBLL (Sample)" : null
+      ].filter(Boolean);
+
+      const pllRows = `
+        <tr><td>T-perm</td><td>${TPERM}</td><td><div class="thumb">T</div></td></tr>
+      `;
+
+      let extrasHTML = "";
+
+      if(owned.has("F2L2LOOK")){
+        extrasHTML += `
+          <div class="divider"></div>
+          <h3>2-Look F2L</h3>
+          <table>
+            <tr><th>Name</th><th>Algorithm</th><th>Picture</th></tr>
+            ${F2L2LOOK_ALGS.map(x => `
+              <tr>
+                <td>${x.name}</td>
+                <td>${x.alg}</td>
+                <td><div class="thumb">F2L</div></td>
+              </tr>`).join("")}
+          </table>`;
+      }
+
+      if(owned.has("OLL_FULL")){
+        const ollRows = OLL.map(c => `
+          <tr>
+            <td>${c.name}</td>
+            <td>${c.alg}</td>
+            <td><img class="alg" src="${c.img}" alt="${c.name}"></td>
+          </tr>`).join('');
+        extrasHTML += `
+          <div class="divider"></div>
+          <h3>OLL (57 cases)</h3>
+          <table>
+            <tr><th>Name</th><th>Algorithm</th><th>Picture</th></tr>
+            ${ollRows}
+          </table>`;
+      }
+
+      if(owned.has("ZBLL_FULL")){
+        const zbllRows = ZBLL.map(c => `
+          <tr>
+            <td>${c.name}</td>
+            <td>${c.alg}</td>
+            <td><img class="alg" src="${c.img}" alt="${c.name}"></td>
+          </tr>`).join('');
+        extrasHTML += `
+          <div class="divider"></div>
+          <h3>ZBLL (sample)</h3>
+          <table>
+            <tr><th>Name</th><th>Algorithm</th><th>Picture</th></tr>
+            ${zbllRows}
+          </table>`;
+      }
+
+      app.innerHTML = `
+        <h2>Algorithm Spreadsheet</h2>
+        ${unlocked.length ? `<div class="note"><b>Unlocked:</b> ${unlocked.join(", ")}</div>` : `<div class="note">Unlock more methods in the Shop to reveal extra sections.</div>`}
+        <div class="divider"></div>
+        <h3>PLL</h3>
+        <table>
+          <tr><th>Case</th><th>Algorithm</th><th>Picture</th></tr>
+          ${pllRows}
+        </table>
+        ${extrasHTML}
+        <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
+      `;
+    }
+
+    // Guide
+    function renderGuide(){
+      app.innerHTML=`
+        <h2>How to solve a Rubik's Cube (CFOP)</h2>
+        <div class="q"><b>Step 1 — Cross:</b> Build a cross matching edge colors to centers.</div><div class="thumb">Cross</div>
+        <div class="q"><b>Step 2 — F2L:</b> Pair corner+edge and insert for all four slots.</div><div class="thumb">F2L</div>
+        <div class="q"><b>Step 3 — OLL:</b> Orient last layer to make the top solid color.</div><div class="thumb">OLL</div>
+        <div class="q"><b>Step 4 — PLL:</b> Permute the last layer to finish.</div><div class="thumb">PLL</div>
+        <div class="row"><button class="btn" onclick="renderSpreadsheet()">Open Spreadsheet</button><button class="btn" onclick="renderMenu()">Back to Main</button></div>`;
+    }
+
+    // Story Game
+    function renderStory(){
+      const scene = STORY[storyIndex];
+      let choiceHTML = "";
+      if(scene.choices.length){
+        choiceHTML = `<div class="row">` + scene.choices.map(c => `
+          <button class="btn" onclick="chooseStory(${c.next},${c.reward})">${c.label}</button>
+        `).join("") + `</div>`;
+      } else {
+        choiceHTML = `<div class="row">
+          <button class="btn" onclick="restartStory()">Play Again</button>
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>`;
+      }
+      app.innerHTML = `
+        <h2>Game</h2>
+        <div class="q">${scene.text}</div>
+        ${choiceHTML}
+        <div class="stats">Coins: ${coins}</div>
+      `;
+    }
+    function chooseStory(nextIndex, reward){
+      coins += reward; setCoins(coins);
+      storyIndex = nextIndex; renderStory();
+    }
+    function restartStory(){ storyIndex = 0; renderStory(); }
+
+    // Boot
+    renderMenu();
+  </script>
+</body>
+</html>
