@@ -173,7 +173,65 @@
       const n = i+1;
       return {
         name: `OLL ${n}`,
-        alg: "(See algdb for preferred alg)", // keep flexible; you can replace with your algs
+        algconst OLL = [
+  {name:"OLL 1",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll1.png"},
+  {name:"OLL 2",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll2.png"},
+  {name:"OLL 3",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll3.png"},
+  {name:"OLL 4",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll4.png"},
+  {name:"OLL 5",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll5.png"},
+  {name:"OLL 6",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll6.png"},
+  {name:"OLL 7 (Sune)",       alg:"R U R' U R U2 R'", img:"https://algdb.net/img/oll/oll7.png"},
+  {name:"OLL 8 (Antisune)",   alg:"R' U' R U' R' U2 R", img:"https://algdb.net/img/oll/oll8.png"},
+  {name:"OLL 9",  alg:"(preferred)", img:"https://algdb.net/img/oll/oll9.png"},
+  {name:"OLL 10", alg:"(preferred)", img:"https://algdb.net/img/oll/oll10.png"},
+  {name:"OLL 11", alg:"(preferred)", img:"https://algdb.net/img/oll/oll11.png"},
+  {name:"OLL 12", alg:"(preferred)", img:"https://algdb.net/img/oll/oll12.png"},
+  {name:"OLL 13", alg:"(preferred)", img:"https://algdb.net/img/oll/oll13.png"},
+  {name:"OLL 14", alg:"(preferred)", img:"https://algdb.net/img/oll/oll14.png"},
+  {name:"OLL 15", alg:"(preferred)", img:"https://algdb.net/img/oll/oll15.png"},
+  {name:"OLL 16", alg:"(preferred)", img:"https://algdb.net/img/oll/oll16.png"},
+  {name:"OLL 17", alg:"(preferred)", img:"https://algdb.net/img/oll/oll17.png"},
+  {name:"OLL 18", alg:"(preferred)", img:"https://algdb.net/img/oll/oll18.png"},
+  {name:"OLL 19", alg:"(preferred)", img:"https://algdb.net/img/oll/oll19.png"},
+  {name:"OLL 20", alg:"(preferred)", img:"https://algdb.net/img/oll/oll20.png"},
+  {name:"OLL 21 (H)",         alg:"F (R U R' U') (R U R' U') F'", img:"https://algdb.net/img/oll/oll21.png"},
+  {name:"OLL 22 (Pi)",        alg:"R U2 R2 F R F' U2 R' F R F'", img:"https://algdb.net/img/oll/oll22.png"},
+  {name:"OLL 23", alg:"(preferred)", img:"https://algdb.net/img/oll/oll23.png"},
+  {name:"OLL 24", alg:"(preferred)", img:"https://algdb.net/img/oll/oll24.png"},
+  {name:"OLL 25", alg:"(preferred)", img:"https://algdb.net/img/oll/oll25.png"},
+  {name:"OLL 26", alg:"(preferred)", img:"https://algdb.net/img/oll/oll26.png"},
+  {name:"OLL 27", alg:"(preferred)", img:"https://algdb.net/img/oll/oll27.png"},
+  {name:"OLL 28", alg:"(preferred)", img:"https://algdb.net/img/oll/oll28.png"},
+  {name:"OLL 29", alg:"(preferred)", img:"https://algdb.net/img/oll/oll29.png"},
+  {name:"OLL 30", alg:"(preferred)", img:"https://algdb.net/img/oll/oll30.png"},
+  {name:"OLL 31", alg:"(preferred)", img:"https://algdb.net/img/oll/oll31.png"},
+  {name:"OLL 32", alg:"(preferred)", img:"https://algdb.net/img/oll/oll32.png"},
+  {name:"OLL 33", alg:"(preferred)", img:"https://algdb.net/img/oll/oll33.png"},
+  {name:"OLL 34", alg:"(preferred)", img:"https://algdb.net/img/oll/oll34.png"},
+  {name:"OLL 35", alg:"(preferred)", img:"https://algdb.net/img/oll/oll35.png"},
+  {name:"OLL 36", alg:"(preferred)", img:"https://algdb.net/img/oll/oll36.png"},
+  {name:"OLL 37", alg:"(preferred)", img:"https://algdb.net/img/oll/oll37.png"},
+  {name:"OLL 38", alg:"(preferred)", img:"https://algdb.net/img/oll/oll38.png"},
+  {name:"OLL 39", alg:"(preferred)", img:"https://algdb.net/img/oll/oll39.png"},
+  {name:"OLL 40", alg:"(preferred)", img:"https://algdb.net/img/oll/oll40.png"},
+  {name:"OLL 41", alg:"(preferred)", img:"https://algdb.net/img/oll/oll41.png"},
+  {name:"OLL 42", alg:"(preferred)", img:"https://algdb.net/img/oll/oll42.png"},
+  {name:"OLL 43", alg:"(preferred)", img:"https://algdb.net/img/oll/oll43.png"},
+  {name:"OLL 44", alg:"(preferred)", img:"https://algdb.net/img/oll/oll44.png"},
+  {name:"OLL 45", alg:"(preferred)", img:"https://algdb.net/img/oll/oll45.png"},
+  {name:"OLL 46", alg:"(preferred)", img:"https://algdb.net/img/oll/oll46.png"},
+  {name:"OLL 47", alg:"(preferred)", img:"https://algdb.net/img/oll/oll47.png"},
+  {name:"OLL 48", alg:"(preferred)", img:"https://algdb.net/img/oll/oll48.png"},
+  {name:"OLL 49", alg:"(preferred)", img:"https://algdb.net/img/oll/oll49.png"},
+  {name:"OLL 50", alg:"(preferred)", img:"https://algdb.net/img/oll/oll50.png"},
+  {name:"OLL 51", alg:"(preferred)", img:"https://algdb.net/img/oll/oll51.png"},
+  {name:"OLL 52", alg:"(preferred)", img:"https://algdb.net/img/oll/oll52.png"},
+  {name:"OLL 53", alg:"(preferred)", img:"https://algdb.net/img/oll/oll53.png"},
+  {name:"OLL 54", alg:"(preferred)", img:"https://algdb.net/img/oll/oll54.png"},
+  {name:"OLL 55", alg:"(preferred)", img:"https://algdb.net/img/oll/oll55.png"},
+  {name:"OLL 56", alg:"(preferred)", img:"https://algdb.net/img/oll/oll56.png"},
+  {name:"OLL 57", alg:"(preferred)", img:"https://algdb.net/img/oll/oll57.png"}
+];
         img: `https://algdb.net/img/oll/oll${n}.png`
       };
     });
@@ -504,3 +562,4 @@
   </script>
 </body>
 </html>
+
