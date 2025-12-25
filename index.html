@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cubing Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {margin:0;font-family:Arial,sans-serif;background:#fff;color:#000;min-height:100vh;}
+        body::before{content:"";position:fixed;inset:0;background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Rubik%27s_cube_scrambled.svg') center/420px no-repeat;opacity:0.08;pointer-events:none;z-index:-1;}
+        .container{max-width:960px;margin:36px auto;padding:0 16px;}
+        .card{background:#000;color:#fff;border-radius:14px;padding:22px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,0.35);border:1px solid #1f1f1f;}
+        h1,h2,h3{margin:0 0 16px 0;}
+        .row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;}
+        .btn{display:inline-block;margin:8px;padding:12px 18px;background:#0078d7;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;min-width:220px;}
+        .btn:hover{background:#005a9e;}
+        .stats{font-weight:700;color:#5fe3a1;margin:10px 0 16px;}
+        .q{font-size:1.1rem;margin:10px 0 16px;}
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;}
+        @media(max-width:640px){.grid{grid-template-columns:1fr;}}
+        .opt{background:#1b1b1b;border:1px solid #2a2a2a;border-radius:10px;padding:10px;cursor:pointer;color:#fff; width: 100%; text-align: left;}
+        table{width:100%;border-collapse:collapse;margin-top:14px;}
+        th,td{border:1px solid #2a2a2a;padding:10px;text-align:left;vertical-align:top;}
+        th{background:#0f0f0f;}
+        td{background:#111;}
+        input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #2a2a2a;background:#1b1b1b;color:#fff;font-size:1rem;margin:8px 0 12px; box-sizing: border-box;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="app"></div>
+    </div>
+
+<script>
+    const COIN_KEY='cubingHubCoins', OWNED_KEY='cubingHubOwned';
+    const getCoins=()=>parseInt(localStorage.getItem(COIN_KEY)||'0',10);
+    const setCoins=v=>{ localStorage.setItem(COIN_KEY,String(v)); coins = v; };
+    const getOwned=()=>{try{return new Set(JSON.parse(localStorage.getItem(OWNED_KEY)||'[]'));}catch{return new Set();}};
+    const setOwned=set=>localStorage.setItem(OWNED_KEY,JSON.stringify([...set]));
+    
+    const app=document.getElementById('app');
+    let coins=getCoins(), owned=getOwned();
+
+    const SHOP_ITEMS=[{id:"F2L2LOOK",name:"2-Look F2L",cost:10},{id:"OLL_FULL",name:"OLL (Full)",cost:20},{id:"ZBLL_FULL",name:"ZBLL (Full)",cost:50}];
+
+    const QUESTIONS=[ 
+        {q:"What is the 3×3 WR?",options:["3.47s","3.13s","3.21s","2.96s"],answer:1},
+        {q:"God’s Number for 3×3?",options:["17","18","20","22"],answer:2},
+        {q:"CFOP stands for?",options:["Cross,F2L,OLL,PLL","Corner First","Center First","Cross,F2L,Orientation,Permutation"],answer:0}
+    ];
+
+    // --- Core Navigation ---
+    function renderMenu(){
+        app.innerHTML=`
+            <h1>Cubing Hub</h1>
+            <p class="stats">Coins: ${coins}</p>
+            <div class="row">
+                <button class="btn" onclick="renderScramble()">Scramble Generator</button>
+                <button class="btn" onclick="startQuiz()">Quiz</button>
+                <button class="btn" onclick="renderShop()">Shop</button>
+                <button class="btn" onclick="renderGuide()">How to Solve</button>
+            </div>`;
+    }
+
+    function renderScramble(){
+        const moves = ["U", "D", "L", "R", "F", "B"];
+        const mods = ["", "'", "2"];
+        let scramble = [];
+        for(let i=0; i<20; i++){
+            let m = moves[Math.floor(Math.random()*moves.length)] + mods[Math.floor(Math.random()*mods.length)];
+            scramble.push(m);
+        }
+        app.innerHTML = `<h2>Scramble</h2><p class="q">${scramble.join(" ")}</p><button class="btn" onclick="renderMenu()">Back</button>`;
+    }
+
+    function startQuiz(){
+        let score = 0;
+        let qIdx = 0;
+        const showQuestion = () => {
+            if(qIdx >= QUESTIONS.length){
+                setCoins(coins + score);
+                app.innerHTML = `<h2>Finished!</h2><p>You earned ${score} coins.</p><button class="btn" onclick="renderMenu()">Back</button>`;
+                return;
+            }
+            let q = QUESTIONS[qIdx];
+            app.innerHTML = `<h3>${q.q}</h3><div class="grid">` + 
+                q.options.map((o, i) => `<button class="opt" onclick="check(${i})">${o}</button>`).join('') + `</div>`;
+        };
+        window.check = (i) => {
+            if(i === QUESTIONS[qIdx].answer) score++;
+            qIdx++;
+            showQuestion();
+        };
+        showQuestion();
+    }
+
+    function renderShop(){
+        let html = `<h2>Shop</h2><p class="stats">Coins: ${coins}</p><table>`;
+        SHOP_ITEMS.forEach(item => {
+            const isOwned = owned.has(item.id);
+            html += `<tr><td>${item.name}</td><td>${item.cost} Coins</td>
+                <td><button onclick="buy('${item.id}', ${item.cost})" ${isOwned ? 'disabled' : ''}>${isOwned ? 'Owned' : 'Buy'}</button></td></tr>`;
+        });
+        app.innerHTML = html + `</table><br><button class="btn" onclick="renderMenu()">Back</button>`;
+    }
+
+    window.buy = (id, cost) => {
+        if(coins >= cost && !owned.has(id)){
+            setCoins(coins - cost);
+            owned.add(id);
+            setOwned(owned);
+            renderShop();
+        } else {
+            alert("Not enough coins or already owned!");
+        }
+    };
+
+    function renderGuide(){
+        app.innerHTML = `<h2>How to Solve</h2><p>1. Cross<br>2. F2L<br>3. OLL<br>4. PLL</p><button class="btn" onclick="renderMenu()">Back</button>`;
+    }
+
+    // Initialize the app
+    renderMenu();
+
+</script>
+</body>
+</html>
