@@ -7,7 +7,7 @@
   <style>
     body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#fff; color:#000; min-height:100vh; }
     body::before { content:""; position:fixed; inset:0; background:url('https://upload.wikimedia.org/wikipedia/commons/6/6d/Rubik%27s_cube_scrambled.svg') center/420px no-repeat; opacity:0.08; pointer-events:none; z-index:-1; }
-    .container { max-width: 980px; margin: 36px auto; padding: 0 16px; }
+    .container { max-width:980px; margin:36px auto; padding:0 16px; }
     .card { background:#000; color:#fff; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,0.35); border:1px solid #1f1f1f; padding:22px; text-align:center; }
     h1, h2, h3 { margin: 0 0 16px 0; }
     .row { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
@@ -20,31 +20,37 @@
     .opt { background:#1b1b1b; border:1px solid #2a2a2a; border-radius:10px; padding:10px; cursor:pointer; color:#fff; }
     table { width:100%; border-collapse:collapse; margin-top:14px; }
     th, td { border:1px solid #2a2a2a; padding:10px; text-align:left; vertical-align:top; }
-    th { background:#0f0f0f; }
-    td { background:#111; }
+    th { background:#0f0f0f; } td { background:#111; }
     .thumb { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; background:#222; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
     img.alg { width:120px; height:80px; border:1px solid #2a2a2a; border-radius:8px; object-fit:contain; background:#222; }
     input[type="text"]{ width:100%; padding:10px; border-radius:8px; border:1px solid #2a2a2a; background:#1b1b1b; color:#fff; font-size:1rem; margin:8px 0 12px; }
     .note { color:#cfcfcf; font-size:0.95rem; margin-bottom:10px; }
     .divider { height:1px; background:#2a2a2a; margin:16px 0; }
+    canvas { background:#0f0f0f; border-radius:10px; margin:12px 0; }
   </style>
 </head>
 <body>
   <div class="container"><div class="card" id="app"></div></div>
 
   <script>
-    // Persistence
-    const COIN_KEY='cubingHubCoins', OWNED_KEY='cubingHubOwned';
+    // Persistence keys
+    const COIN_KEY='cubingHubCoins', OWNED_KEY='cubingHubOwned', SOLVES_KEY='cubingHubSolves', BESTS_KEY='cubingHubBests';
+
+    // Persistence helpers
     const getCoins = ()=> parseInt(localStorage.getItem(COIN_KEY)||'0',10);
     const setCoins = v => localStorage.setItem(COIN_KEY,String(v));
     const getOwned = ()=> { try{ return new Set(JSON.parse(localStorage.getItem(OWNED_KEY)||'[]')); } catch{ return new Set(); } };
     const setOwned = set => localStorage.setItem(OWNED_KEY, JSON.stringify([...set]));
+    const getSolves = ()=> { try{ return JSON.parse(localStorage.getItem(SOLVES_KEY)||'[]'); } catch{ return []; } };
+    const setSolves = arr => localStorage.setItem(SOLVES_KEY, JSON.stringify(arr));
+    const getBests = ()=> { try{ return JSON.parse(localStorage.getItem(BESTS_KEY)||'{"bestSingle":null,"bestAo5":null,"bestAo12":null}'); } catch{ return {bestSingle:null,bestAo5:null,bestAo12:null}; } };
+    const setBests = obj => localStorage.setItem(BESTS_KEY, JSON.stringify(obj));
 
     // App state
     const app=document.getElementById('app');
-    let coins=getCoins(), owned=getOwned(), deck=[], idx=0, score=0, usedReviveMC=false, usedReviveInput=false;
+    let coins=getCoins(), owned=getOwned();
 
-    // PLL reference (T-perm used for revive)
+    // PLL reference
     const PLL = { T: "R U R' U' R' F R2 U' R' U' R U R' F'" };
     const TPERM = PLL.T;
 
@@ -79,7 +85,7 @@
       {q:"Pyraminx notation includes?", options:["R U L F D B","Face + tip moves","Slice moves","Rotations only"], answer:1}
     ];
 
-    // Revive MCQ pool
+    // Revive set
     const REVIVE_PLL = [
       {q:"Which PLL swaps opposite edges?", options:["H perm","Z perm","Ua perm","Ub perm"], answer:0},
       {q:"Which PLL swaps adjacent edges?", options:["Z perm","H perm","Ua perm","Ub perm"], answer:1},
@@ -87,20 +93,20 @@
       {q:"Which PLL cycles three edges counterclockwise?", options:["Ua perm","Ub perm","T perm","Y perm"], answer:1}
     ];
 
-    // 2-Look F2L unlock data
+    // F2L 2-Look sample
     const F2L2LOOK_ALGS = [
-      {name: "2-Look F2L (basic pair insert)", alg: "U R U' R'"},
-      {name: "2-Look F2L (alt insert)", alg: "y' U' R' U R"}
+      {name:"2-Look F2L (basic pair insert)", alg:"U R U' R'"},
+      {name:"2-Look F2L (alt insert)", alg:"y' U' R' U R"}
     ];
 
-    // Full OLL (57 images from algdb.net)
-    const OLL = Array.from({length:57}, (_,i) => ({
+    // Full OLL diagrams (57)
+    const OLL = Array.from({length:57}, (_,i)=>({
       name: `OLL ${i+1}`,
-      alg: "(See algdb for preferred alg)", // optional to customize later
+      alg: "(Fill with preferred alg)",
       img: `https://algdb.net/img/oll/oll${i+1}.png`
     }));
 
-    // Sample ZBLL (expandable)
+    // Sample ZBLL
     const ZBLL = [
       {name:"ZBLL U1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/u1.png"},
       {name:"ZBLL U2", alg:"(See algdb)", img:"https://algdb.net/img/zbll/u2.png"},
@@ -109,31 +115,24 @@
       {name:"ZBLL T1", alg:"(See algdb)", img:"https://algdb.net/img/zbll/t1.png"}
     ];
 
-    // Story Game
+    // Story
     const STORY = [
-      {
-        text: "You wake up in a cubing arena. A giant scrambled cube floats before you.",
-        choices: [
-          {label:"Try to solve it", next:1, reward:2},
-          {label:"Walk away", next:2, reward:0}
-        ]
-      },
-      {
-        text: "You grab the cube and start turning. The crowd cheers!",
-        choices: [
-          {label:"Keep solving", next:3, reward:5},
-          {label:"Drop the cube", next:2, reward:0}
-        ]
-      },
-      { text: "You leave the arena. The adventure ends.", choices: [] },
-      { text: "You solve the cube! Confetti rains down. You are crowned champion.", choices: [] }
+      { text:"You wake up in a cubing arena. A giant scrambled cube floats before you.", choices:[{label:"Try to solve it",next:1,reward:2},{label:"Walk away",next:2,reward:0}] },
+      { text:"You grab the cube and start turning. The crowd cheers!", choices:[{label:"Keep solving",next:3,reward:5},{label:"Drop the cube",next:2,reward:0}] },
+      { text:"You leave the arena. The adventure ends.", choices:[] },
+      { text:"You solve the cube! Confetti rains down. You are crowned champion.", choices:[] }
     ];
-    let storyIndex = 0;
+    let storyIndex=0;
+
+    // Timer state
+    let timerRunning=false, startTime=0;
+    let solves = getSolves(); // array of seconds (number)
+    let bests = getBests(); // {bestSingle, bestAo5, bestAo12}
 
     // Entry
     renderMenu();
 
-    // Views
+    // Menu
     function renderMenu(){
       app.innerHTML = `
         <h1>Cubing Hub</h1>
@@ -144,12 +143,15 @@
           <button class="btn" onclick="renderSpreadsheet()">Algorithm Spreadsheet</button>
           <button class="btn" onclick="renderGuide()">How to Solve</button>
           <button class="btn" onclick="renderStory()">Game</button>
+          <button class="btn" onclick="renderTimer()">Timer</button>
         </div>
         <div class="stats">Coins: ${coins}</div>
       `;
+      // Remove global key handler when not in timer
+      document.onkeydown = null;
     }
 
-    // Scramble
+    // Scramble generator
     function renderScramble(){
       const s = generateScramble(20);
       app.innerHTML = `
@@ -168,8 +170,8 @@
       let seq=[], last=null;
       for(let i=0;i<len;i++){
         let f;
-        do { f = faces[Math.floor(Math.random()*faces.length)]; }
-        while(last && axis(f) === axis(last));
+        do{ f = faces[Math.floor(Math.random()*faces.length)]; }
+        while(last && axis(f)===axis(last));
         last = f;
         seq.push(f + mods[Math.floor(Math.random()*mods.length)]);
       }
@@ -177,34 +179,25 @@
     }
 
     // Quiz
-    function startQuiz(){
-      deck = QUESTIONS.slice();
-      idx = 0; score = 0; usedReviveMC = false; usedReviveInput = false;
-      renderQuestion();
-    }
+    let deck=[], idx=0, score=0, usedReviveMC=false, usedReviveInput=false;
+    function startQuiz(){ deck=QUESTIONS.slice(); idx=0; score=0; usedReviveMC=false; usedReviveInput=false; renderQuestion(); }
     function renderQuestion(){
-      if(idx >= deck.length){ return renderSummary(); }
+      if(idx>=deck.length) return renderSummary();
       const q = deck[idx];
       app.innerHTML = `
         <h2>Quiz</h2>
         <div class="stats">Q ${idx+1}/${deck.length} • Score ${score} • Coins ${coins}</div>
         <div class="q">${q.q}</div>
-        <div class="grid">
-          ${q.options.map((o,i)=>`<button class="opt" onclick="choose(${i})">${o}</button>`).join("")}
-        </div>
-        <div class="row">
-          <button class="btn" onclick="renderMenu()">Back to Main</button>
-        </div>
+        <div class="grid">${q.options.map((o,i)=>`<button class="opt" onclick="choose(${i})">${o}</button>`).join("")}</div>
+        <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
       `;
     }
     function choose(i){
-      const q = deck[idx];
-      if(i === q.answer){
-        score++; coins++; setCoins(coins);
-        idx++; renderQuestion();
-      } else {
-        if(!usedReviveMC){ usedReviveMC = true; reviveMC(); }
-        else if(!usedReviveInput){ usedReviveInput = true; reviveInput(); }
+      const q=deck[idx];
+      if(i===q.answer){ score++; coins++; setCoins(coins); idx++; renderQuestion(); }
+      else {
+        if(!usedReviveMC){ usedReviveMC=true; reviveMC(); }
+        else if(!usedReviveInput){ usedReviveInput=true; reviveInput(); }
         else { alert("Out of revives! Returning to main."); renderMenu(); }
       }
     }
@@ -213,15 +206,12 @@
       app.innerHTML = `
         <h2>Revive Challenge — PLL</h2>
         <div class="q">${r.q}</div>
-        <div class="grid">
-          ${r.options.map((o,i)=>`<button class="opt" onclick="reviveMCAnswer(${i},${r.answer})">${o}</button>`).join("")}
-        </div>
+        <div class="grid">${r.options.map((o,i)=>`<button class="opt" onclick="reviveMCAnswer(${i},${r.answer})">${o}</button>`).join("")}</div>
         <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
       `;
     }
     function reviveMCAnswer(choice, correct){
-      if(choice === correct){ idx++; renderQuestion(); }
-      else { reviveInput(); }
+      if(choice===correct){ idx++; renderQuestion(); } else { reviveInput(); }
     }
     function reviveInput(){
       app.innerHTML = `
@@ -236,18 +226,13 @@
       `;
     }
     function checkTperm(){
-      const val = (document.getElementById('algInput').value || '').trim().replace(/\s+/g,' ');
+      const val = (document.getElementById('algInput').value||'').trim().replace(/\s+/g,' ');
       const ref = TPERM.trim().replace(/\s+/g,' ');
-      if(val.toUpperCase() === ref.toUpperCase()){
-        alert("Revived!");
-        idx++; renderQuestion();
-      } else {
-        alert("Incorrect T-perm. Returning to main.");
-        renderMenu();
-      }
+      if(val.toUpperCase() === ref.toUpperCase()){ alert("Revived!"); idx++; renderQuestion(); }
+      else { alert("Incorrect T-perm. Returning to main."); renderMenu(); }
     }
     function renderSummary(){
-      const pct = Math.round((score / deck.length) * 100);
+      const pct = Math.round((score/deck.length)*100);
       app.innerHTML = `
         <h2>Quiz Complete</h2>
         <div class="q">Score: ${score}/${deck.length} (${pct}%)</div>
@@ -271,21 +256,19 @@
             return `<tr>
               <td>${i.name}</td>
               <td>${i.cost}</td>
-              <td>${has ? "Owned" : "Not owned"}</td>
-              <td>${has ? "<span>Purchased</span>" : `<button class="btn" onclick="buy('${i.id}',${i.cost})">Buy</button>`}</td>
+              <td>${has?"Owned":"Not owned"}</td>
+              <td>${has?"<span>Purchased</span>":`<button class="btn" onclick="buy('${i.id}',${i.cost})">Buy</button>`}</td>
             </tr>`;
           }).join("")}
         </table>
         <div class="row"><button class="btn" onclick="renderMenu()">Back to Main</button></div>
       `;
     }
-    function buy(id, cost){
+    function buy(id,cost){
       if(owned.has(id)) return alert("Already purchased.");
-      if(coins < cost) return alert("Not enough coins!");
-      coins -= cost; setCoins(coins);
-      owned.add(id); setOwned(owned);
-      alert("Purchased!");
-      renderShop();
+      if(coins<cost) return alert("Not enough coins!");
+      coins-=cost; setCoins(coins); owned.add(id); setOwned(owned);
+      alert("Purchased!"); renderShop();
     }
 
     // Spreadsheet
@@ -296,10 +279,7 @@
         owned.has("ZBLL_FULL") ? "ZBLL (Sample)" : null
       ].filter(Boolean);
 
-      const pllRows = `
-        <tr><td>T-perm</td><td>${TPERM}</td><td><div class="thumb">T</div></td></tr>
-      `;
-
+      const pllRows = `<tr><td>T-perm</td><td>${TPERM}</td><td><div class="thumb">T</div></td></tr>`;
       let extrasHTML = "";
 
       if(owned.has("F2L2LOOK")){
@@ -308,7 +288,7 @@
           <h3>2-Look F2L</h3>
           <table>
             <tr><th>Name</th><th>Algorithm</th><th>Picture</th></tr>
-            ${F2L2LOOK_ALGS.map(x => `
+            ${F2L2LOOK_ALGS.map(x=>`
               <tr>
                 <td>${x.name}</td>
                 <td>${x.alg}</td>
@@ -318,7 +298,7 @@
       }
 
       if(owned.has("OLL_FULL")){
-        const ollRows = OLL.map(c => `
+        const ollRows = OLL.map(c=>`
           <tr>
             <td>${c.name}</td>
             <td>${c.alg}</td>
@@ -334,7 +314,7 @@
       }
 
       if(owned.has("ZBLL_FULL")){
-        const zbllRows = ZBLL.map(c => `
+        const zbllRows = ZBLL.map(c=>`
           <tr>
             <td>${c.name}</td>
             <td>${c.alg}</td>
@@ -351,7 +331,7 @@
 
       app.innerHTML = `
         <h2>Algorithm Spreadsheet</h2>
-        ${unlocked.length ? `<div class="note"><b>Unlocked:</b> ${unlocked.join(", ")}</div>` : `<div class="note">Unlock more methods in the Shop to reveal extra sections.</div>`}
+        ${unlocked.length?`<div class="note"><b>Unlocked:</b> ${unlocked.join(", ")}</div>`:`<div class="note">Unlock more methods in the Shop to reveal extra sections.</div>`}
         <div class="divider"></div>
         <h3>PLL</h3>
         <table>
@@ -365,21 +345,25 @@
 
     // Guide
     function renderGuide(){
-      app.innerHTML=`
+      app.innerHTML = `
         <h2>How to solve a Rubik's Cube (CFOP)</h2>
         <div class="q"><b>Step 1 — Cross:</b> Build a cross matching edge colors to centers.</div><div class="thumb">Cross</div>
         <div class="q"><b>Step 2 — F2L:</b> Pair corner+edge and insert for all four slots.</div><div class="thumb">F2L</div>
         <div class="q"><b>Step 3 — OLL:</b> Orient last layer to make the top solid color.</div><div class="thumb">OLL</div>
         <div class="q"><b>Step 4 — PLL:</b> Permute the last layer to finish.</div><div class="thumb">PLL</div>
-        <div class="row"><button class="btn" onclick="renderSpreadsheet()">Open Spreadsheet</button><button class="btn" onclick="renderMenu()">Back to Main</button></div>`;
+        <div class="row">
+          <button class="btn" onclick="renderSpreadsheet()">Open Spreadsheet</button>
+          <button class="btn" onclick="renderMenu()">Back to Main</button>
+        </div>
+      `;
     }
 
-    // Story Game
+    // Story
     function renderStory(){
       const scene = STORY[storyIndex];
       let choiceHTML = "";
       if(scene.choices.length){
-        choiceHTML = `<div class="row">` + scene.choices.map(c => `
+        choiceHTML = `<div class="row">` + scene.choices.map(c=>`
           <button class="btn" onclick="chooseStory(${c.next},${c.reward})">${c.label}</button>
         `).join("") + `</div>`;
       } else {
@@ -395,14 +379,212 @@
         <div class="stats">Coins: ${coins}</div>
       `;
     }
-    function chooseStory(nextIndex, reward){
-      coins += reward; setCoins(coins);
-      storyIndex = nextIndex; renderStory();
-    }
-    function restartStory(){ storyIndex = 0; renderStory(); }
+    function chooseStory(nextIndex,reward){ coins+=reward; setCoins(coins); storyIndex=nextIndex; renderStory(); }
+    function restartStory(){ storyIndex=0; renderStory(); }
 
-    // Boot
-    renderMenu();
+    // Timer
+    function renderTimer(){
+      const scramble = generateScramble(20);
+      app.innerHTML = `
+        <h2>Timer</h2>
+        <div class="q">Scramble:</div>
+        <div class="stats" id="scramble">${scramble}</div>
+        <h1 id="timerDisplay" style="color:lime">0.00</h1>
+        <div class="note">Press SPACE to start/stop</div>
+
+        <div class="divider"></div>
+        <h3>Stats</h3>
+        <div id="statsArea"></div>
+
+        <div class="divider"></div>
+        <h3>Progress graph</h3>
+        <canvas id="chart" width="800" height="300"></canvas>
+
+        <div class="divider"></div>
+        <h3>Solve history</h3>
+        <div id="historyArea"></div>
+
+        <div class="row">
+          <button class="btn" onclick="resetSession()">Reset Session</button>
+          <button class="btn" onclick="exportCSV()">Export CSV</button>
+          <button class="btn" onclick="renderMenu()">Back</button>
+        </div>
+      `;
+      document.onkeydown=(e)=>{ if(e.code==="Space"){ e.preventDefault(); toggleTimer(); } };
+      updateStatsUI();
+      drawChart();
+      renderHistory();
+    }
+
+    function toggleTimer(){
+      const display=document.getElementById("timerDisplay");
+      if(!timerRunning){
+        startTime=performance.now();
+        timerRunning=true;
+        display.style.color="red";
+        updateTimer();
+      } else {
+        timerRunning=false;
+        const end=performance.now();
+        const time=((end-startTime)/1000);
+        solves.push(time);
+        setSolves(solves);
+
+        // Update bests
+        const currentAo5 = computeAo(5);
+        const currentAo12 = computeAo(12);
+        bests.bestSingle = bests.bestSingle==null ? time : Math.min(bests.bestSingle, time);
+        if(currentAo5!=null) bests.bestAo5 = bests.bestAo5==null ? currentAo5 : Math.min(bests.bestAo5, currentAo5);
+        if(currentAo12!=null) bests.bestAo12 = bests.bestAo12==null ? currentAo12 : Math.min(bests.bestAo12, currentAo12);
+        setBests(bests);
+
+        display.style.color="lime";
+        // new scramble
+        document.getElementById("scramble").textContent = generateScramble(20);
+
+        updateStatsUI();
+        drawChart();
+        renderHistory();
+      }
+    }
+    function updateTimer(){
+      if(!timerRunning) return;
+      const elapsed=(performance.now()-startTime)/1000;
+      document.getElementById("timerDisplay").textContent = elapsed.toFixed(2);
+      requestAnimationFrame(updateTimer);
+    }
+
+    // Stats UI
+    function updateStatsUI(){
+      const statsDiv=document.getElementById("statsArea");
+      if(!solves.length){
+        statsDiv.innerHTML = "<div class='note'>No solves yet. Press SPACE to start your first solve.</div>";
+        return;
+      }
+      const last = solves[solves.length-1].toFixed(2);
+      const bestSingle = (bests.bestSingle??Math.min(...solves)).toFixed(2);
+      const mean = average(solves).toFixed(2);
+      const stdev = stdDev(solves).toFixed(2);
+
+      const ao5 = computeAo(5);
+      const ao12 = computeAo(12);
+
+      const bestAo5 = bests.bestAo5!=null ? bests.bestAo5.toFixed(2) : (solves.length>=5 ? ao5.toFixed(2) : "—");
+      const bestAo12 = bests.bestAo12!=null ? bests.bestAo12.toFixed(2) : (solves.length>=12 ? ao12.toFixed(2) : "—");
+
+      statsDiv.innerHTML = `
+        <div class="q">Last solve: ${last}s</div>
+        <div class="q">Best single: ${bestSingle}s</div>
+        <div class="q">Mean of all: ${mean}s</div>
+        <div class="q">Std Dev: ${stdev}</div>
+        <div class="q">Current Ao5: ${ao5!=null ? ao5.toFixed(2)+"s" : "—"}</div>
+        <div class="q">Current Ao12: ${ao12!=null ? ao12.toFixed(2)+"s" : "—"}</div>
+        <div class="q">Best Ao5: ${bestAo5}s</div>
+        <div class="q">Best Ao12: ${bestAo12}s</div>
+        <div class="q">Total solves: ${solves.length}</div>
+      `;
+    }
+
+    // History table
+    function renderHistory(){
+      const el = document.getElementById('historyArea');
+      if(!solves.length){ el.innerHTML = "<div class='note'>No solves yet.</div>"; return; }
+      const rows = solves.map((t,i)=>`<tr><td>#${i+1}</td><td>${t.toFixed(2)}s</td></tr>`).join('');
+      el.innerHTML = `
+        <table>
+          <tr><th>Index</th><th>Time</th></tr>
+          ${rows}
+        </table>
+      `;
+    }
+
+    // Graph
+    function drawChart(){
+      const canvas=document.getElementById('chart');
+      if(!canvas) return;
+      const ctx=canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      if(solves.length<2){
+        ctx.fillStyle="#fff";
+        ctx.fillText("Complete at least 2 solves to see the graph.", 20, 30);
+        return;
+      }
+
+      // Determine scale
+      const maxT = Math.max(...solves);
+      const minT = Math.min(...solves);
+      const padding = 10;
+      const yRange = (maxT - minT) || 1;
+
+      // Plot line
+      ctx.strokeStyle="#5fe3a1";
+      ctx.lineWidth=2;
+      ctx.beginPath();
+      solves.forEach((t,i)=>{
+        const x = padding + (i*(canvas.width - 2*padding)/(solves.length-1));
+        const y = canvas.height - padding - ((t - minT) * (canvas.height - 2*padding) / yRange);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+
+      // Trend line (simple least squares)
+      const n=solves.length;
+      const xs = solves.map((_,i)=>i);
+      const ys = solves;
+      const meanX = average(xs);
+      const meanY = average(ys);
+      const num = xs.reduce((acc,i)=> acc + (i-meanX)*(ys[i]-meanY), 0);
+      const den = xs.reduce((acc,i)=> acc + (i-meanX)*(i-meanX), 0) || 1;
+      const m = num/den;
+      const b = meanY - m*meanX;
+
+      ctx.strokeStyle="#ffffff88";
+      ctx.beginPath();
+      for(let i=0;i<n;i++){
+        const t = m*i + b;
+        const x = padding + (i*(canvas.width - 2*padding)/(n-1));
+        const y = canvas.height - padding - ((t - minT) * (canvas.height - 2*padding) / yRange);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+
+    // Timer helpers
+    function average(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+    function stdDev(arr){
+      if(!arr.length) return 0;
+      const m = average(arr);
+      return Math.sqrt(arr.reduce((s,v)=> s + (v-m)**2, 0) / arr.length);
+    }
+    function computeAo(n){
+      if(solves.length < n) return null;
+      const sub = solves.slice(-n);
+      // WCA Ao excludes fastest and slowest — optional. Here we use simple mean.
+      return average(sub);
+    }
+    function resetSession(){
+      if(!confirm("Reset session? This clears all solves and bests.")) return;
+      solves = [];
+      bests = {bestSingle:null, bestAo5:null, bestAo12:null};
+      setSolves(solves);
+      setBests(bests);
+      renderTimer();
+    }
+    function exportCSV(){
+      if(!solves.length){ alert("No solves to export."); return; }
+      const lines = ["index,time_s"];
+      solves.forEach((t,i)=> lines.push(`${i+1},${t.toFixed(2)}`));
+      const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "cubing_hub_solves.csv";
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    // Boot menu again to ensure clean handlers
+    function backToMenu(){ document.onkeydown=null; renderMenu(); }
   </script>
 </body>
 </html>
